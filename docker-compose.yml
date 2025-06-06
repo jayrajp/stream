@@ -13,6 +13,24 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+  
+  backend:
+    build:
+      context: ./backend          # 👈 Build context is backend folder
+      dockerfile: Dockerfile
+    container_name: node_backend
+    ports:
+      - "3001:${PORT}"
+    depends_on:
+      - postgres
+    env_file:
+      - .env                      # 👈 Loads from root .env
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app           # 👈 Map backend code
+      - /app/node_modules
+    working_dir: /app
+    command: npm run dev
 
 volumes:
   pgdata:

@@ -6,25 +6,22 @@ const pool = new Pool({
   host: process.env.PGHOST || 'localhost',
   database: process.env.PGDATABASE || 'streaming',
   password: process.env.PGPASSWORD || '123@Jayraj',
-  port: process.env.PGPORT || 5432,
+  port: process.env.PGPORT || 5433,
 });
 
 async function getDatabase() {
   const client = await pool.connect();
+
   try {
     await client.query('BEGIN');
+    console.log('🔄 Starting DB initialization transaction...');
 
-    // Handle pgcrypto extension
-    try {
-      await client.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
-    } catch (err) {
-      if (err.code !== '23505') throw err;
-      console.log('pgcrypto extension already exists');
-    }
+    // pgcrypto extension
+    await client.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`);
+    console.log('✅ pgcrypto extension ensured');
 
-    // Create tables with error handling for existing tables
     const tables = [
-            {
+      {
         name: 'users',
         query: `
           CREATE TABLE IF NOT EXISTS users (
@@ -34,9 +31,8 @@ async function getDatabase() {
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )`
+          )`,
       },
-
       {
         name: 'channels',
         query: `
@@ -46,7 +42,7 @@ async function getDatabase() {
             description TEXT,
             owner_id UUID NOT NULL REFERENCES users(id),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )`
+          )`,
       },
       {
         name: 'streams',
@@ -62,7 +58,7 @@ async function getDatabase() {
             recording_path TEXT,
             transcript_path TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )`
+          )`,
       },
       {
         name: 'viewers',
@@ -75,7 +71,7 @@ async function getDatabase() {
             stream_id UUID NOT NULL REFERENCES streams(id) ON DELETE CASCADE,
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             left_at TIMESTAMP
-          )`
+          )`,
       },
       {
         name: 'chat_messages',
@@ -87,7 +83,7 @@ async function getDatabase() {
             message TEXT NOT NULL,
             sentiment TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )`
+          )`,
       },
       {
         name: 'mood_logs',
@@ -97,7 +93,7 @@ async function getDatabase() {
             stream_id UUID NOT NULL REFERENCES streams(id) ON DELETE CASCADE,
             mood TEXT NOT NULL,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )`
+          )`,
       },
       {
         name: 'keywords',
@@ -107,30 +103,28 @@ async function getDatabase() {
             stream_id UUID NOT NULL REFERENCES streams(id) ON DELETE CASCADE,
             keyword TEXT NOT NULL,
             frequency INTEGER NOT NULL
-          )`
+          )`,
       }
     ];
 
-    for (const table of tables) {
+    for (const { name, query } of tables) {
       try {
-        await client.query(table.query);
+        await client.query(query);
+        console.log(`✅ Table ensured: ${name}`);
       } catch (err) {
-        if (err.code !== '23505') { // Only ignore duplicate table errors
-          throw err;
-        }
-        console.log(`${table.name} table already exists`);
+        console.error(`❌ Error creating table "${name}": ${err.message}`);
+        throw err; // Force rollback on any failure
       }
     }
 
     await client.query('COMMIT');
-    console.log('✅ PostgreSQL database initialized successfully');
+    console.log('🎉 PostgreSQL database initialized successfully');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Error initializing PostgreSQL database:', error);
+    console.error('🔥 Rolling back DB init due to error:', error.message);
     throw error;
   } finally {
     client.release();
-    // Don't end the pool here - let the calling code manage it
   }
 }
 
