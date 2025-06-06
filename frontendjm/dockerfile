@@ -1,0 +1,36 @@
+# Use official Node image to build the app
+FROM node:20 AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+COPY vite.config.* ./
+COPY tsconfig.json ./
+COPY tailwind.config.js postcss.config.js ./
+RUN npm install
+
+# Copy the rest of the app
+COPY . .
+
+# Build the app for production
+RUN npm run build
+
+# Serve the app with a static file server (like `serve`)
+FROM node:20-alpine AS runner
+
+# Install a lightweight static file server
+RUN npm install -g serve
+
+# Copy build output from previous stage
+COPY --from=builder /app/dist /app/dist
+
+# Set working directory
+WORKDIR /app
+
+# Expose the port the app runs on
+EXPOSE 4173
+
+# Start the app
+CMD ["serve", "-s", "dist", "-l", "4173"]

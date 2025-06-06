@@ -1,0 +1,9 @@
+server:
+  httpAddress: :8889
+
+webrtc:
+  enabled: yes
+
+paths:
+  all:
+    source: publisher

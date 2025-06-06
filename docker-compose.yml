@@ -32,5 +32,25 @@ services:
     working_dir: /app
     command: npm run dev
 
+  # mediamtx:
+  #   image: bluenviron/mediamtx
+  #   container_name: media_server
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8889:8889"
+  #   volumes:
+  #     - ./mediamtx.yml:/mediamtx.yml
+  #   command: /mediamtx.yml
+
+  frontend:
+    build:
+      context: ./frontendjm          # 👈 Build context is backend folder
+      dockerfile: Dockerfile
+    ports:
+      - "4173:4173"
+    container_name: frontend
+    restart: unless-stopped
+
+    
 volumes:
   pgdata:
